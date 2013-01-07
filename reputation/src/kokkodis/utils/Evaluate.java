@@ -13,10 +13,9 @@ import kokkodis.factory.EvalWorker;
 import kokkodis.factory.Instance;
 import kokkodis.factory.ModelCategory;
 import kokkodis.factory.MultCategory;
+import kokkodis.factory.PropertiesFactory;
 import kokkodis.factory.RawInstance;
 import kokkodis.odesk.Reputation;
-import kokkodis.utils.odesk.GlobalVariables;
-import kokkodis.utils.odesk.PropertiesFactory;
 
 public class Evaluate {
 
@@ -29,7 +28,8 @@ public class Evaluate {
 
 	public static void evaluate() {
 
-		readLambdas();
+		if (!GlobalVariables.evaluateOnTrain)
+			readLambdas();
 		globalVariables = GlobalVariables.getInstance();
 		if (GlobalVariables.printFiles)
 			printCoefficients();
@@ -38,10 +38,10 @@ public class Evaluate {
 
 		System.out
 				.println("model | approach |  ScoreThreshold | HistoryThreshold | MAE-model"
-						+ " | MAE-Baseline" + " | MAE-EM" 
-					//	+ " | MSE-model"
-					//	+ " | MSE-Baseline"
-					);
+						+ " | MAE-Baseline" + " | MAE-EM"
+				// + " | MSE-model"
+				// + " | MSE-Baseline"
+				);
 		/*
 		 * For reading the testing file: ArrayList<Instance> data = loadData();
 		 */
@@ -387,11 +387,16 @@ public class Evaluate {
 					currentTaskCluster);
 		}
 
-		emquality = estimateEMQuality(average, rIndependent,
-				(rlIndependent != -1) ? rlIndependent : rrIndependent,
-				currentTaskCluster);
+		if (!GlobalVariables.evaluateOnTrain) {
+			emquality = estimateEMQuality(average, rIndependent,
+					(rlIndependent != -1) ? rlIndependent : rrIndependent,
+					currentTaskCluster);
 
-		emAbsoluteError = Math.abs(emquality - ri.getScore());
+			emAbsoluteError = Math.abs(emquality - ri.getScore());
+			errorHolder.setEMModelMAESum(errorHolder.getEMModelMAESum()
+					+ emAbsoluteError);
+		
+		}
 		modelAbsoluteError = (Math.abs(modelQuality - ri.getScore()));
 
 		if (GlobalVariables.curModel.equals("Binomial")) {
@@ -407,8 +412,6 @@ public class Evaluate {
 		baselineAbsoluteError = (Math.abs(baselineEstimatedQuality
 				- ri.getScore()));
 
-		errorHolder.setEMModelMAESum(errorHolder.getEMModelMAESum()
-				+ emAbsoluteError);
 		errorHolder.setBinomialModelMAESum(errorHolder.getBinomialModelMAESum()
 				+ modelAbsoluteError);
 
@@ -432,7 +435,7 @@ public class Evaluate {
 							+ ri.getScore() + "," + modelQuality + ","
 							+ baselineEstimatedQuality + "," + average + ","
 							+ rIndependent + "," + rlIndependent + ","
-							+ rrIndependent + ","+emquality);
+							+ rrIndependent + "," + emquality);
 		}
 
 	}
