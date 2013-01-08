@@ -25,6 +25,7 @@ public class GlobalVariables {
 	public static boolean printFiles = false;
 	public static boolean hierarchicalFlag = false;
 	public static boolean evaluateOnTrain=false;
+	public static boolean outputPredictions = false;
 	
 
 	/**
