@@ -24,14 +24,14 @@ package kokkodis.odesk;
 
 import java.util.HashMap;
 
+import kokkodis.factory.PropertiesFactory;
 import kokkodis.utils.AverageResults;
+import kokkodis.utils.CreateTrainTest;
 import kokkodis.utils.Evaluate;
+import kokkodis.utils.GlobalVariables;
 import kokkodis.utils.PrintToFile;
 import kokkodis.utils.RunRegressions;
 import kokkodis.utils.Utils;
-import kokkodis.utils.odesk.CreateTrainTest;
-import kokkodis.utils.odesk.GlobalVariables;
-import kokkodis.utils.odesk.PropertiesFactory;
 
 public class Reputation {
 
@@ -73,6 +73,8 @@ public class Reputation {
 					showAveragesCV = true;
 				if (args[i].contains("-n"))
 					GlobalVariables.evaluateOnTrain = true;
+				if(args[i].contains("-p"))
+					GlobalVariables.outputPredictions = true;
 
 			}
 
@@ -154,12 +156,12 @@ public class Reputation {
 
 			GlobalVariables.allResultsFile
 					.writeToFile("model,approach,ScoreThreshold,HistoryThreshold,MAE-model"
-							+ ",MAE-Baseline" + ",MSE-model" + ",MSE-Baseline");
+							+ ",MAE-Baseline" + ",MAE-EM");
 
 			globalVars.openFile(resultPath + "coeffs"
 					+ (crossValidation ? "_cv" : "") + ".csv");
 
-			if (!crossValidation) {
+			if (GlobalVariables.outputPredictions) {
 				GlobalVariables.predictions = new PrintToFile();
 				GlobalVariables.predictions.openFile(resultPath
 						+ "predictions"
@@ -181,7 +183,7 @@ public class Reputation {
 
 			GlobalVariables.allResultsFile.closeFile();
 			globalVars.getOutputFile().closeFile();
-			if (!crossValidation)
+			if (GlobalVariables.outputPredictions)
 				GlobalVariables.predictions.closeFile();
 		}
 	}

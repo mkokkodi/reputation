@@ -12,7 +12,6 @@ import kokkodis.factory.EvalWorker;
 import kokkodis.factory.ModelCategory;
 import kokkodis.factory.MultCategory;
 import kokkodis.factory.RawInstance;
-import kokkodis.utils.odesk.GlobalVariables;
 
 public class Utils {
 
@@ -113,8 +112,8 @@ public class Utils {
 			double alpha_k = bucketSuccesses[i]
 					+ GlobalVariables.multinomialPrior[i];
 			/**
-			 * Assign zero probability to some events, in the case where they have zero priors and
-			 * they haven't been observed up to that point.
+			 * Assign zero probability to some events, in the case where they
+			 * have zero priors and they haven't been observed up to that point.
 			 */
 			if (alpha_k == 0)
 				newDistro[i] = 0;
@@ -202,7 +201,8 @@ public class Utils {
 						+ GlobalVariables.curCluster : "")
 				+ (GlobalVariables.curModel.equals("Binomial") ? "_"
 						+ GlobalVariables.currentBinomialThreshold : "")
-				+((GlobalVariables.currentFold!=null)?"_"+GlobalVariables.currentFold:"")+ ".csv";
+				+ ((GlobalVariables.currentFold != null) ? "_"
+						+ GlobalVariables.currentFold : "") + ".csv";
 		return res;
 	}
 
@@ -230,14 +230,13 @@ public class Utils {
 		if (cat == 0)
 			return 0;
 		GlobalVariables globalVariables = GlobalVariables.getInstance();
-	/*	String catName = globalVariables.getCatIntToName().get(cat);
-		String cluster = globalVariables.getCategoriesToClusters().get(catName);
-		String rootCategory = globalVariables.getClusterToRealName().get(
-				cluster);
-		return globalVariables.getCatNameToInt().get(rootCategory);
-		*/
+		/*
+		 * String catName = globalVariables.getCatIntToName().get(cat); String
+		 * cluster = globalVariables.getCategoriesToClusters().get(catName);
+		 * String rootCategory = globalVariables.getClusterToRealName().get(
+		 * cluster); return globalVariables.getCatNameToInt().get(rootCategory);
+		 */
 		return globalVariables.getCategoriesToRoot().get(cat);
-				
 
 	}
 
@@ -314,24 +313,24 @@ public class Utils {
 	}
 
 	public static void printHelp() {
-			String s = "-t		   	Train: crete regression files.>>"
-					+ "-g 			Generate the necessary training files from the raw instances.  >>"
-					+ "-e			Run evaluation. >>"
-					+ "-w			Print results to files.  >>"
-					+ "-cv			Run cross validation>>"
-					+ "-f			Number of folds for cross validation.>>"
-					+ "-s			Split files to -f number of folds. The spliting is by contractor.>>"
-			;
+		String s = "-t		   	Train: crete regression files.>>"
+				+ "-g 			Generate the necessary training files from the raw instances.  >>"
+				+ "-e			Run evaluation. >>"
+				+ "-w			Print results to files.  >>"
+				+ "-cv			Run cross validation>>"
+				+ "-f			Number of folds for cross validation.>>"
+				+ "-s			Split files to -f number of folds. The spliting is by contractor.>>"
+				+ "-p	 		Output predictions to \"predictions.csv\". >>"
+				+ "-a			Show average accuracies for cross validation.>>"
+				+ "-n			Evaluate on train set.>>";
 
-			System.out.println("Available options:");
-			System.out
-					.println("------------------------------------------------------------------");
-			for (String str : s.split(">>"))
-				System.out.println(str);
-			System.out
-					.println("------------------------------------------------------------------");
-		}
-
-		
+		System.out.println("Available options:");
+		System.out
+				.println("------------------------------------------------------------------");
+		for (String str : s.split(">>"))
+			System.out.println(str);
+		System.out
+				.println("------------------------------------------------------------------");
+	}
 
 }

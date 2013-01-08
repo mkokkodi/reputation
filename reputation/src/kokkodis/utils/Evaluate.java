@@ -10,12 +10,10 @@ import java.util.Map.Entry;
 import kokkodis.factory.BinCategory;
 import kokkodis.factory.ErrorHolder;
 import kokkodis.factory.EvalWorker;
-import kokkodis.factory.Instance;
 import kokkodis.factory.ModelCategory;
 import kokkodis.factory.MultCategory;
 import kokkodis.factory.PropertiesFactory;
 import kokkodis.factory.RawInstance;
-import kokkodis.odesk.Reputation;
 
 public class Evaluate {
 
@@ -42,9 +40,6 @@ public class Evaluate {
 				// + " | MSE-model"
 				// + " | MSE-Baseline"
 				);
-		/*
-		 * For reading the testing file: ArrayList<Instance> data = loadData();
-		 */
 
 		for (historyThreshold = 9; historyThreshold <= 40; historyThreshold += 2) {
 
@@ -57,12 +52,13 @@ public class Evaluate {
 			double maeBinomialModel = errorHolder.getBinomialModelMAESum()
 					/ errorHolder.getTotalEvaluations();
 
-			double mseBinomialModel = errorHolder.getBinomialModelMSESum()
-					/ errorHolder.getTotalEvaluations();
-
-			double mseBaseline = errorHolder.getBaselineMSESum()
-					/ errorHolder.getTotalEvaluations();
-
+			/*
+			 * double mseBinomialModel = errorHolder.getBinomialModelMSESum() /
+			 * errorHolder.getTotalEvaluations();
+			 * 
+			 * double mseBaseline = errorHolder.getBaselineMSESum() /
+			 * errorHolder.getTotalEvaluations();
+			 */
 			double maeEMModel = errorHolder.getEMModelMAESum()
 					/ errorHolder.getTotalEvaluations();
 
@@ -395,7 +391,7 @@ public class Evaluate {
 			emAbsoluteError = Math.abs(emquality - ri.getScore());
 			errorHolder.setEMModelMAESum(errorHolder.getEMModelMAESum()
 					+ emAbsoluteError);
-		
+
 		}
 		modelAbsoluteError = (Math.abs(modelQuality - ri.getScore()));
 
@@ -423,7 +419,7 @@ public class Evaluate {
 
 		errorHolder.setBaselineMSESum(errorHolder.getBaselineMSESum()
 				+ Math.pow(baselineAbsoluteError, 2));
-		if (GlobalVariables.printFiles && !Reputation.crossValidation) {
+		if (GlobalVariables.printFiles && GlobalVariables.outputPredictions) {
 
 			GlobalVariables.predictions
 					.writeToFile(GlobalVariables.curModel
@@ -695,38 +691,6 @@ public class Evaluate {
 		}
 		return evalWorker;
 
-	}
-
-	private static ArrayList<Instance> loadData() {
-		ArrayList<Instance> data = new ArrayList<Instance>();
-		try {
-			BufferedReader input = new BufferedReader(new FileReader(
-					PropertiesFactory.getInstance().getProps()
-							.getProperty("testingOutPath")
-							+ Utils.createFileName()));
-			String line;
-			line = input.readLine();
-			/**
-			 * id,logit(overall),logit(non-technical),
-			 * logit(technical),cat,logit(q_cat(t+1))
-			 */
-			while ((line = input.readLine()) != null) {
-				String[] tmpAr = line.split(",");
-				Instance in = new Instance();
-				in.setContractor(Integer.parseInt(tmpAr[0].trim()));
-				in.setCurCategory(Integer.parseInt(tmpAr[tmpAr.length - 2]
-						.trim()));
-				in.setCurTaskLogit(Double.parseDouble(tmpAr[tmpAr.length - 1]
-						.trim()));
-				for (int i = 1; i < tmpAr.length - 2; i++) {
-					in.getCurHistory().add(tmpAr[i]);
-				}
-			}
-			input.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return data;
 	}
 
 	private static double estimateBinomialBaselineQuality(
