@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import kokkodis.utils.odesk.PropertiesFactory;
+import kokkodis.factory.PropertiesFactory;
 
 public class EMComputeLambdas {
 
@@ -52,17 +52,29 @@ public class EMComputeLambdas {
 					HashMap<String, Double> currentLambdas = lambdas.get(key);
 					// System.out.println("Estimating Lambdas for "+key);
 					HashMap<String, Double> currentAplhas = alphas.get(key);
-					currentAplhas.put("average", currentLambdas.get("average")
-							* estimateProbKgivenY("average", e.getValue()));
-					currentAplhas.put("r", currentLambdas.get("r")
-							* estimateProbKgivenY("r", e.getValue()));
-					if (curCluster.equals("rr")) {
-						currentAplhas.put("rr", currentLambdas.get("rr")
-								* estimateProbKgivenY("rr", e.getValue()));
-					} else {
-						currentAplhas.put("rl", currentLambdas.get("rl")
-								* estimateProbKgivenY("rl", e.getValue()));
-					}
+					HashMap<String, Double> probSuccessGivenM = new HashMap<String, Double>();
+					probSuccessGivenM.put("average",
+							estimateProbSuccessgivenM("average", e.getValue()));
+					probSuccessGivenM.put("r",
+							estimateProbSuccessgivenM("r", e.getValue()));
+					probSuccessGivenM
+							.put(curCluster,
+									estimateProbSuccessgivenM(curCluster,
+											e.getValue()));
+					double denom = estimateAlphaDenom(probSuccessGivenM,
+							currentLambdas);
+					currentAplhas.put(
+							"average",
+							estimateAlpha(probSuccessGivenM, currentLambdas,
+									"average", denom));
+					currentAplhas.put(
+							"r",
+							estimateAlpha(probSuccessGivenM, currentLambdas,
+									"r", denom));
+					currentAplhas.put(
+							curCluster,
+							estimateAlpha(probSuccessGivenM, currentLambdas,
+									curCluster, denom));
 					estimateNewLambdas(key, currentAplhas, currentLambdas);
 				}
 			}
@@ -88,6 +100,26 @@ public class EMComputeLambdas {
 		pf.closeFile();
 		System.out.println("Completed.");
 
+	}
+
+	private static Double estimateAlpha(
+			HashMap<String, Double> probSuccessGivenM,
+			HashMap<String, Double> currentLambdas, String curCluster,
+			double denom) {
+
+		double nom = currentLambdas.get(curCluster)
+				* probSuccessGivenM.get(curCluster);
+		return nom / denom;
+	}
+
+	private static double estimateAlphaDenom(
+			HashMap<String, Double> probSuccessGivenM,
+			HashMap<String, Double> currentLambdas) {
+		double denom = 0;
+		for (Entry<String, Double> e : probSuccessGivenM.entrySet()) {
+			denom += currentLambdas.get(e.getKey()) * e.getValue();
+		}
+		return denom;
 	}
 
 	private static void estimateNewLambdas(String key,
@@ -152,7 +184,7 @@ public class EMComputeLambdas {
 		return tmpAr[tmpAr.length - 1];
 	}
 
-	private static double estimateProbKgivenY(String cluster,
+	private static double estimateProbSuccessgivenM(String cluster,
 			ArrayList<HashMap<String, Boolean>> curData) {
 		double successes = 0;
 		for (HashMap<String, Boolean> hm : curData) {
