@@ -75,6 +75,13 @@ public class Reputation {
 					GlobalVariables.evaluateOnTrain = true;
 				if(args[i].contains("-p"))
 					GlobalVariables.outputPredictions = true;
+				if(args[i].contains("-yc")){
+					GlobalVariables.syntheticCluster = true;
+				}
+			
+				else if(args[i].contains("-y"))
+					GlobalVariables.synthetic = true;
+			
 
 			}
 
@@ -152,11 +159,14 @@ public class Reputation {
 					.getProperty("results");
 			GlobalVariables.allResultsFile = new PrintToFile();
 			GlobalVariables.allResultsFile.openFile(resultPath + "results"
-					+ (crossValidation ? "_cv" : "") + ".csv");
+					+ (crossValidation ? "_cv" : "") + 
+ ((GlobalVariables.synthetic) ? ("_syn" + (globalVars
+							.getClusterCategories().get("r").length - 1)) : "")
+					+ ".csv");
 
 			GlobalVariables.allResultsFile
-					.writeToFile("model,approach,ScoreThreshold,HistoryThreshold,MAE-model"
-							+ ",MAE-Baseline" + ",MAE-EM");
+					.writeToFile(((GlobalVariables.synthetic)?"categories,":"")+"model,exactModel,approach,ScoreThreshold,HistoryThreshold,MAEModel"
+							+ ",MAEBaseline");
 
 			globalVars.openFile(resultPath + "coeffs"
 					+ (crossValidation ? "_cv" : "") + ".csv");

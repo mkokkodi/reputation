@@ -17,7 +17,7 @@ public class EMComputeLambdas {
 	/*
 	 * A succesful prediction is one with less than 0.05 error.
 	 */
-	private static final double epsilonForSuccess = 0.05;
+	private static final double epsilonForSuccess = 0.01;
 	private static HashMap<String, ArrayList<HashMap<String, Boolean>>> data;
 	private static HashMap<String, HashMap<String, Double>> lambdas;
 	private static final double numberOfLevels = 3;
@@ -26,13 +26,23 @@ public class EMComputeLambdas {
 	private static final double convergenceCritirion = 0.001;
 	private static boolean allConverged = false;
 	private static final int maxIterations = 1000;
+	private static int categories = -1;
 
 	public static void main(String[] args) {
 
+		for (int i = 0; i < args.length; i++) {
+			if (args[i].contains("-c"))
+
+				categories = Integer.parseInt(args[i + 1].trim());
+		}
+		System.out.println("Categories:"+categories);
+		
 		PrintToFile pf = new PrintToFile();
 		String outFile = PropertiesFactory.getInstance().getProps()
 				.getProperty("results");
-		pf.openFile(outFile + "lambdas.csv");
+		pf.openFile(outFile + "lambdas"
+				+ ((categories != -1) ? "" + categories : "") + ".csv");
+		
 		pf.writeToFile("model,approach, cluster, averageLambda, rLambda, clusterLambda");
 		loadData();
 		initializeLambdas();
@@ -57,10 +67,12 @@ public class EMComputeLambdas {
 							estimateProbSuccessgivenM("average", e.getValue()));
 					probSuccessGivenM.put("r",
 							estimateProbSuccessgivenM("r", e.getValue()));
-					probSuccessGivenM
-							.put(curCluster,
-									estimateProbSuccessgivenM(curCluster,
-											e.getValue()));
+					if (!curCluster.equals("r")) {
+						probSuccessGivenM.put(
+								curCluster,
+								estimateProbSuccessgivenM(curCluster,
+										e.getValue()));
+					}
 					double denom = estimateAlphaDenom(probSuccessGivenM,
 							currentLambdas);
 					currentAplhas.put(
@@ -71,10 +83,11 @@ public class EMComputeLambdas {
 							"r",
 							estimateAlpha(probSuccessGivenM, currentLambdas,
 									"r", denom));
-					currentAplhas.put(
-							curCluster,
-							estimateAlpha(probSuccessGivenM, currentLambdas,
-									curCluster, denom));
+					if (!curCluster.equals("r"))
+						currentAplhas.put(
+								curCluster,
+								estimateAlpha(probSuccessGivenM,
+										currentLambdas, curCluster, denom));
 					estimateNewLambdas(key, currentAplhas, currentLambdas);
 				}
 			}
@@ -90,6 +103,7 @@ public class EMComputeLambdas {
 			String curCluster = getCurClusterFromKey(key);
 			Double clusterLambda = eOut.getValue().get(curCluster);
 
+			System.out.println(curCluster);
 			System.out.println(" avg : " + aveLambda + " rLambda:" + rLambda
 					+ " cluster:" + clusterLambda);
 			String[] tmpAr = key.split("_");
@@ -117,8 +131,9 @@ public class EMComputeLambdas {
 			HashMap<String, Double> currentLambdas) {
 		double denom = 0;
 		for (Entry<String, Double> e : probSuccessGivenM.entrySet()) {
-			denom += currentLambdas.get(e.getKey()) * e.getValue();
+			denom += (currentLambdas.get(e.getKey()) * e.getValue());
 		}
+		
 		return denom;
 	}
 
@@ -170,7 +185,7 @@ public class EMComputeLambdas {
 			curLambda.put("r", initValue);
 			if (curCluster.equals("rr"))
 				curLambda.put("rr", initValue);
-			else
+			else if (curCluster.equals("rl"))
 				curLambda.put("rl", initValue);
 			lambdas.put(key, curLambda);
 			alphas.put(key, new HashMap<String, Double>());
@@ -201,7 +216,7 @@ public class EMComputeLambdas {
 		System.out.println("Loading data...");
 
 		/**
-		 * key = model + approach + HistoryThreshold + cluster (rl or rr)
+		 * key = model + approach + ScoreThreshold + cluster (rl or rr)
 		 */
 
 		data = new HashMap<String, ArrayList<HashMap<String, Boolean>>>();
@@ -215,8 +230,8 @@ public class EMComputeLambdas {
 			line = input.readLine();
 			/**
 			 * Predictions file:
-			 * model,approach,ScoreThreshold,HistoryThreshold,actual,
-			 * prediction,baseline,average,r,rl,rr From this, I need average, r,
+			 *model,approach,ScoreThreshold,HistoryThreshold,actual,
+			 *prediction,baseline,average,r,rl,rr,EMPrediction From this, I need average, r,
 			 * rl, rr.
 			 */
 			while ((line = input.readLine()) != null) {
@@ -225,24 +240,35 @@ public class EMComputeLambdas {
 				/*
 				 * Key = model + approach + cluster
 				 */
-				String key = tmpAr[0] + "_" + tmpAr[1]; // + "_" + tmpAr[3];
+				String key = tmpAr[0] + "_" + tmpAr[1] + "_" + tmpAr[2];
 														// exclude history.
 				double actualQuality = Double.parseDouble(tmpAr[4].trim());
 				HashMap<String, Boolean> curInstance = new HashMap<String, Boolean>();
-				curInstance.put("average", getSuccess(tmpAr[7], actualQuality));
+				curInstance.put(
+						"average",
+						getSuccess(Double.parseDouble(tmpAr[7].trim()),
+								actualQuality));
 
-				curInstance.put("r", getSuccess(tmpAr[8], actualQuality));
+				curInstance.put(
+						"r",
+						getSuccess(Double.parseDouble(tmpAr[8].trim()),
+								actualQuality));
 
 				double rl = Double.parseDouble(tmpAr[9].trim());
+				double rr = Double.parseDouble(tmpAr[10].trim());
 
-				String curCluster = (rl == -1.0) ? "rr" : "rl";
-				if (curCluster.equals("rr"))
-					curInstance.put("rr", getSuccess(tmpAr[10], actualQuality));
-				else
-					curInstance.put("rl", getSuccess(tmpAr[9], actualQuality));
-
+				String curCluster = "r";
+				if (rl != -1) {
+					curInstance.put("rl", getSuccess(rl, actualQuality));
+					curCluster = "rl";
+				} else if (rr != -1) {
+					curInstance.put("rr", getSuccess(rr, actualQuality));
+					curCluster = "rr";
+				}
+				
+				
 				key += "_" + curCluster;
-
+				
 				ArrayList<HashMap<String, Boolean>> list = data.get(key);
 				if (list == null) {
 					list = new ArrayList<HashMap<String, Boolean>>();
@@ -260,9 +286,8 @@ public class EMComputeLambdas {
 		return null;
 	}
 
-	private static Boolean getSuccess(String prediction, double actualQuality) {
-		double diff = Math.abs(Double.parseDouble(prediction.trim())
-				- actualQuality);
+	private static Boolean getSuccess(double prediction, double actualQuality) {
+		double diff = Math.abs(prediction - actualQuality);
 		return (diff <= epsilonForSuccess) ? true : false;
 	}
 

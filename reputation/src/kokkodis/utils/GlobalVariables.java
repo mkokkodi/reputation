@@ -54,7 +54,17 @@ public class GlobalVariables {
 	private HashMap<Integer,Integer> categoriesToRoot;
 	public static int folds=-1;
 	public static Integer currentFold = null;
+
+	public static boolean synthetic = false;
+
+	public static boolean syntheticCluster=false;
+
+	private double outOfScore;
 	
+
+	public double getOutOfScore() {
+		return outOfScore;
+	}
 
 	public HashMap<Integer, Integer> getCategoriesToRoot() {
 		return categoriesToRoot;
@@ -174,6 +184,7 @@ public class GlobalVariables {
 			// System.out.println(i+" - "+q);
 			qualities[i] = q;
 		}
+		outOfScore = Double.parseDouble(props.getProperty("outOfScore"));
 
 	}
 

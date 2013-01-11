@@ -26,9 +26,10 @@ public class Evaluate {
 
 	public static void evaluate() {
 
+		globalVariables = GlobalVariables.getInstance();
 		if (!GlobalVariables.evaluateOnTrain)
 			readLambdas();
-		globalVariables = GlobalVariables.getInstance();
+
 		if (GlobalVariables.printFiles)
 			printCoefficients();
 
@@ -41,7 +42,8 @@ public class Evaluate {
 				// + " | MSE-Baseline"
 				);
 
-		for (historyThreshold = 9; historyThreshold <= 40; historyThreshold += 2) {
+		int limit = (GlobalVariables.evaluateOnTrain ? 10 : 30);
+		for (historyThreshold = 9; historyThreshold <= limit; historyThreshold += 2) {
 
 			errorHolder = new ErrorHolder();
 
@@ -49,7 +51,7 @@ public class Evaluate {
 
 			double maeBaseline = errorHolder.getBaselineMAESum()
 					/ errorHolder.getTotalEvaluations();
-			double maeBinomialModel = errorHolder.getBinomialModelMAESum()
+			double maeHierarchicalModel = errorHolder.getBinomialModelMAESum()
 					/ errorHolder.getTotalEvaluations();
 
 			/*
@@ -62,19 +64,45 @@ public class Evaluate {
 			double maeEMModel = errorHolder.getEMModelMAESum()
 					/ errorHolder.getTotalEvaluations();
 
-			String resStr = GlobalVariables.curModel + " | "
-					+ GlobalVariables.curApproach + " | "
+			String resStr = GlobalVariables.curApproach + " | "
 					+ GlobalVariables.currentBinomialThreshold + " | "
-					+ historyThreshold + " | " + maeBinomialModel + " | "
-					+ maeBaseline + " | " + maeEMModel;
+					+ historyThreshold + " | ";
 
 			// mseBinomialModel + " | "
 			// + mseBaseline;
-			System.out.println(resStr);
-			if (GlobalVariables.printFiles)
+			if (GlobalVariables.printFiles) {
 
-				GlobalVariables.allResultsFile.writeToFile(resStr.replaceAll(
-						" \\| ", ","));
+				GlobalVariables.allResultsFile
+						.writeToFile(((GlobalVariables.synthetic) ? (GlobalVariables
+								.getInstance().getClusterCategories().get("r").length - 1 + ",")
+								: "")
+								+ GlobalVariables.curModel
+								+ ",Hierarchical,"
+								+ resStr.replaceAll(" \\| ", ",")
+								+ maeHierarchicalModel + "," + maeBaseline);
+				GlobalVariables.allResultsFile
+						.writeToFile(((GlobalVariables.synthetic) ? (GlobalVariables
+								.getInstance().getClusterCategories().get("r").length - 1 + ",")
+								: "")
+								+ GlobalVariables.curModel
+								+ ",Shrinkage,"
+								+ resStr.replaceAll(" \\| ", ",")
+								+ maeEMModel
+								+ "," + maeBaseline);
+				GlobalVariables.allResultsFile
+						.writeToFile(((GlobalVariables.synthetic) ? ("Baseline,")
+								: "")
+								+ GlobalVariables.curModel
+								+ ",Baseline,"
+								+ resStr.replaceAll(" \\| ", ",")
+								+ maeBaseline
+								+ "," + maeBaseline);
+
+			}
+			resStr += maeHierarchicalModel + " | " + maeBaseline + "|"
+					+ maeEMModel;
+			;
+			System.out.println(GlobalVariables.curModel + " | " + resStr);
 
 		}
 
@@ -87,8 +115,14 @@ public class Evaluate {
 			try {
 				String f = PropertiesFactory.getInstance().getProps()
 						.getProperty("results");
-				f += "lambdas.csv";
+				int categories = -1;
+				if (GlobalVariables.synthetic)
+					categories = globalVariables.getClusterCategories()
+							.get("r").length - 1;
+				f += "lambdas" + ((categories != -1) ? categories : "")
+						+ ".csv";
 
+				System.out.println("Loading lambdas from:" + f);
 				BufferedReader input = new BufferedReader(new FileReader(f));
 				String line;
 				line = input.readLine();
@@ -180,7 +214,23 @@ public class Evaluate {
 		HashMap<Integer, EvalWorker> dataMapHolderEval = new HashMap<Integer, EvalWorker>();
 		String inputDirectory = PropertiesFactory.getInstance().getProps()
 				.getProperty("rawPath");
-		inputDirectory += (GlobalVariables.evaluateOnTrain ? "train" : "test")
+		String testFile = "test";
+		String trainFile = "train";
+		if (GlobalVariables.synthetic) {
+			// System.out.println("Evaluating on synthetic data...");
+			int categories = globalVariables.getClusterCategories().get("r").length - 1;
+			trainFile = "syn_train_cat" + categories;
+			testFile = "syn_test_cat" + categories;
+
+		} else if (GlobalVariables.syntheticCluster) {
+			// System.out.println("Evaluating on synthetic data...");
+			trainFile = "syn_cluster_train";
+			testFile = "syn_cluster_test";
+
+		}
+
+		inputDirectory += (GlobalVariables.evaluateOnTrain ? trainFile
+				: testFile)
 				+ ((GlobalVariables.currentFold != null) ? GlobalVariables.currentFold
 						: "") + ".csv";
 
@@ -188,7 +238,9 @@ public class Evaluate {
 			BufferedReader input = new BufferedReader(new FileReader(
 					inputDirectory));
 			String line;
-			line = input.readLine();
+			while ((line = input.readLine()).contains("#")) {
+			}
+			;
 
 			/**
 			 * contractor,category,score "
@@ -254,6 +306,7 @@ public class Evaluate {
 		/**
 		 * Adding the other category holders in case is absent.
 		 */
+
 		int genericCategory = Utils.adjustCategoryToRoot(ri.getCategory());
 
 		ModelCategory specializedCurTaskCat = null;
@@ -375,14 +428,20 @@ public class Evaluate {
 		modelQuality = predictModelQuality(evalWorker, ri, workerType,
 				currentTaskCluster);
 		rIndependent = predictIndependent(evalWorker, ri, "r");
-		if (currentTaskCluster.equals("rr")) {
-			rrIndependent = predictIndependent(evalWorker, ri,
-					currentTaskCluster);
-		} else {
-			rlIndependent = predictIndependent(evalWorker, ri,
-					currentTaskCluster);
-		}
+		/*
+		 * if (GlobalVariables.hierarchicalFlag) { if
+		 * (currentTaskCluster.equals("rr")) { rrIndependent =
+		 * predictIndependent(evalWorker, ri, currentTaskCluster); } else {
+		 * rlIndependent = predictIndependent(evalWorker, ri,
+		 * currentTaskCluster); }
+		 */
 
+		if (currentTaskCluster.equals("rr")) {
+			rrIndependent = modelQuality;
+		} else {
+			rlIndependent = modelQuality;
+		}
+	
 		if (!GlobalVariables.evaluateOnTrain) {
 			emquality = estimateEMQuality(average, rIndependent,
 					(rlIndependent != -1) ? rlIndependent : rrIndependent,
@@ -420,19 +479,18 @@ public class Evaluate {
 		errorHolder.setBaselineMSESum(errorHolder.getBaselineMSESum()
 				+ Math.pow(baselineAbsoluteError, 2));
 		if (GlobalVariables.printFiles && GlobalVariables.outputPredictions) {
-
-			GlobalVariables.predictions
-					.writeToFile(GlobalVariables.curModel
-							+ ","
-							+ GlobalVariables.curApproach
-							+ ","
-							+ (GlobalVariables.curModel.equals("Binomial") ? GlobalVariables.currentBinomialThreshold
-									: "-") + "," + historyThreshold + ","
-							+ ri.getScore() + "," + modelQuality + ","
-							+ baselineEstimatedQuality + "," + average + ","
-							+ rIndependent + "," + rlIndependent + ","
-							+ rrIndependent + "," + emquality);
-		}
+				GlobalVariables.predictions
+						.writeToFile(GlobalVariables.curModel
+								+ ","
+								+ GlobalVariables.curApproach
+								+ ","
+								+ (GlobalVariables.curModel.equals("Binomial") ? GlobalVariables.currentBinomialThreshold
+										: "-") + "," + historyThreshold + ","
+								+ ri.getScore() + "," + modelQuality + ","
+								+ baselineEstimatedQuality + "," + average
+								+ "," + rIndependent + "," + rlIndependent
+								+ "," + rrIndependent + "," + emquality);
+			}
 
 	}
 
@@ -440,6 +498,8 @@ public class Evaluate {
 			double rIndependent, double clusterPrediction,
 			String currentTaskCluster) {
 
+		if (clusterPrediction == -1)
+			clusterPrediction = 0;
 		HashMap<String, Double> hm = lambdas.get(createKey(
 				GlobalVariables.curModel, GlobalVariables.curApproach,
 				currentTaskCluster));

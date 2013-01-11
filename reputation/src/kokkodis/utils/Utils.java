@@ -138,46 +138,6 @@ public class Utils {
 		return res;
 	}
 
-	public Integer getGenericCat(Integer catId) {
-		if (catId == 1)
-			return 1;
-		else if (catId == 2)
-			return 1;
-		else if (catId == 3)
-			return 2;
-		else if (catId == 4)
-			return 2;
-		else if (catId == 5)
-			return 2;
-		/*
-		 * For utility
-		 */
-		else if (catId == 20)
-			return 1;
-		else if (catId == 60)
-			return 2;
-		else if (catId == 80)
-			return 1;
-		else if (catId == 90)
-			return 2;
-
-		return 1;
-	}
-
-	public int adjustODeskCategory(String level, int catId) {
-
-		if (level.equals("Technical")) {
-			if (catId == 6)
-				return 3;
-			else
-				return catId;
-		}// Just to fit in the model with m=4;
-		if (level.equals("Non-technical"))
-			return catId - 2;
-		else
-			return getGenericCat(catId);
-	}
-
 	/**
 	 * Returns bucket of the score.
 	 * 
@@ -212,7 +172,8 @@ public class Utils {
 	public static RawInstance stringToRawInstance(String line) {
 		RawInstance ri = new RawInstance();
 		String[] tmpAr = line.split(",");
-		ri.setScore(Double.parseDouble(tmpAr[2].trim()) / 5);
+		ri.setScore(Double.parseDouble(tmpAr[2].trim())
+				/ GlobalVariables.getInstance().getOutOfScore());
 		ri.setContractor(Integer.parseInt(tmpAr[0].trim()));
 		ri.setCategory(Integer.parseInt(tmpAr[1].trim()));
 		return ri;
@@ -229,6 +190,8 @@ public class Utils {
 	public static Integer adjustCategoryToRoot(int cat) {
 		if (cat == 0)
 			return 0;
+		if (!GlobalVariables.hierarchicalFlag)
+			return cat;
 		GlobalVariables globalVariables = GlobalVariables.getInstance();
 		/*
 		 * String catName = globalVariables.getCatIntToName().get(cat); String
@@ -244,7 +207,6 @@ public class Utils {
 		GlobalVariables globalVariables = GlobalVariables.getInstance();
 		String[] curCategories = globalVariables.getClusterCategories().get(
 				GlobalVariables.curCluster);
-
 		return getIds(curCategories);
 	}
 
@@ -284,10 +246,8 @@ public class Utils {
 
 			if (score > GlobalVariables.currentBinomialThreshold) {
 				((BinCategory) mc).setX(((BinCategory) mc).getX() + 1);
-				((BinCategory) mc).setN(((BinCategory) mc).getN() + 1);
-			} else {
-				((BinCategory) mc).setN(((BinCategory) mc).getN() + 1);
 			}
+			((BinCategory) mc).setN(((BinCategory) mc).getN() + 1);
 		} else {
 			((MultCategory) mc).getBucketSuccesses()[Utils.getBucket(score)]++;
 			((MultCategory) mc).increaseTotalTrials();

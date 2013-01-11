@@ -17,11 +17,21 @@ public class CreateTrainTest {
 	private static String inputDirectory;
 
 	public static void generateTrainTestSets() {
-		initInput("rawPath","train.csv");
-		initAndRun("trainingOutPath");
+		globalVariables = GlobalVariables.getInstance();
+		String trainFile = "train.csv";
+		if (GlobalVariables.synthetic) {
 
-		// Will use for E-M most probably.
-		// initAndRun("inputTest", "testingOutPath");
+			System.out.println("Running on synthetic data...");
+			int categories = globalVariables.getClusterCategories().get("r").length - 1;
+			trainFile = "syn_train_cat" + categories + ".csv";
+		} else if (GlobalVariables.syntheticCluster) {
+
+			System.out.println("Running on synthetic clusters of data...");
+			trainFile = "syn_cluster_train.csv";
+
+		}
+		initInput("rawPath", trainFile);
+		initAndRun("trainingOutPath");
 
 	}
 
@@ -53,7 +63,6 @@ public class CreateTrainTest {
 	}
 
 	private static void initInput(String inputVar, String inputFile) {
-		globalVariables = GlobalVariables.getInstance();
 
 		inputDirectory = PropertiesFactory.getInstance().getProps()
 				.getProperty(inputVar)
@@ -70,19 +79,25 @@ public class CreateTrainTest {
 			BufferedReader input = new BufferedReader(new FileReader(
 					inputDirectory));
 			String line;
-			line = input.readLine();
+			System.out.println("Reading from file:" + inputDirectory);
+			while ((line = input.readLine()).contains("#")) {
+			}
+
 			/**
 			 * contractor,category,score "
 			 */
 			while ((line = input.readLine()) != null) {
 				RawInstance ri = Utils.stringToRawInstance(line);
 
-				if (GlobalVariables.curCluster.equals("r")
-						|| catInCluster(ri.getCategory())) {
+				if (catInCluster(ri.getCategory())
+						|| (GlobalVariables.curCluster.equals("r") && GlobalVariables.hierarchicalFlag)) {
 					/*
 					 * adjust category changes cat only if cat in root.
 					 */
-					ri.setCategory(Utils.adjustCategory(ri.getCategory()));
+
+					{
+						ri.setCategory(Utils.adjustCategory(ri.getCategory()));
+					}
 					updateWorkerHistoryAndPrintTuple(dataMapHolder,
 							ri.getContractor(), ri.getCategory(), ri.getScore());
 				}
@@ -268,20 +283,20 @@ public class CreateTrainTest {
 	}
 
 	public static void createDeveloperSets(int i) {
-		initInput("rawPath","allData.csv");
+		initInput("rawPath", "allData.csv");
 		System.out.println("Reading from directory:" + inputDirectory);
 		String outDir = PropertiesFactory.getInstance().getProps()
 				.getProperty("rawPath");
-		globalVariables.openFile(outDir
-				+ "train" + i+ ".csv");
-		
+		globalVariables.openFile(outDir + "train" + i + ".csv");
+
 		PrintToFile testOut = new PrintToFile();
-		testOut.openFile(outDir+"test"+i+".csv");
+		testOut.openFile(outDir + "test" + i + ".csv");
 		try {
 			BufferedReader input = new BufferedReader(new FileReader(
 					inputDirectory));
 			String line;
 			line = input.readLine();
+
 			globalVariables.getOutputFile().writeToFile(line);
 			/**
 			 * contractor,category,score "
@@ -292,7 +307,7 @@ public class CreateTrainTest {
 						% (GlobalVariables.folds);
 				if ((mod == i) || (mod == 0 && i == GlobalVariables.folds)) {
 					testOut.writeToFile(line);
-					}else{
+				} else {
 					globalVariables.getOutputFile().writeToFile(line);
 				}
 			}
