@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -14,8 +13,8 @@ import java.util.Map.Entry;
 import flanagan.analysis.Regression;
 
 import kokkodis.odesk.Reputation;
-import kokkodis.utils.odesk.GlobalVariables;
-import kokkodis.utils.odesk.PropertiesFactory;
+import kokkodis.utils.GlobalVariables;
+import kokkodis.factory.PropertiesFactory;
 
 public class RunRegressions {
 

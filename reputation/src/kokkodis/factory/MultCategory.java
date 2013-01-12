@@ -1,6 +1,6 @@
 package kokkodis.factory;
 
-import kokkodis.utils.odesk.GlobalVariables;
+import kokkodis.utils.GlobalVariables;
 
 public class MultCategory extends ModelCategory {
 
