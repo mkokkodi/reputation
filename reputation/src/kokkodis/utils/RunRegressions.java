@@ -23,6 +23,7 @@ public class RunRegressions {
 	private static GlobalVariables globalVariables;
 	private static Properties props;
 	private static ArrayList<Integer> curCatIds;
+	private static HashMap<String,ArrayList<String>> regressionData;
 
 	public static void createRegressionFiles() {
 
@@ -35,7 +36,7 @@ public class RunRegressions {
 		System.out.println("Output files at " + regressionOutPath);
 		System.out.println("Input File:" + inFile);
 
-		createFiles(inFile);
+		regressionData = loadRegressionData(inFile);
 
 	}
 
@@ -49,13 +50,14 @@ public class RunRegressions {
 
 	}
 
-	private static void createFiles(String inFile) {
+	private static HashMap<String, ArrayList<String>> loadRegressionData(String inFile) {
 		try {
 			BufferedReader input = new BufferedReader(new FileReader(inFile));
 			String line = input.readLine();
 
-			HashMap<String, PrintToFile> outFilesHolder = initializeFiles();
+			//HashMap<String, PrintToFile> outFilesHolder = initializeFiles();
 
+			HashMap<String,ArrayList<String>> regressionData  = new HashMap<String, ArrayList<String>>();
 			/**
 			 * id,logit(q),logit(overall),logit(writing),
 			 * logit(administrative),logit(sales-and-marketing),
@@ -74,18 +76,29 @@ public class RunRegressions {
 						newLine += tmpAr[i] + ",";
 					}
 					newLine = newLine.substring(0, newLine.length() - 1);
+					ArrayList<String> curData = regressionData.get(key);
+					if(curData==null){
+						curData = new ArrayList<String>();
+						regressionData.put(key, curData);
+					}
+					curData.add(newLine);
+					/*
 					PrintToFile tmp = outFilesHolder.get(key);
 					if (tmp != null) {
 						tmp.writeToFile(newLine);
 					}
+					*/
 
 				}
 			}
 			input.close();
-			closeFiles(outFilesHolder);
+			return regressionData;
+			//closeFiles(outFilesHolder);
 
 		} catch (IOException e) {
+			e.printStackTrace();
 		}
+		return null;
 	}
 
 	private static void closeFiles(HashMap<String, PrintToFile> outFilesHolder) {
@@ -144,8 +157,8 @@ public class RunRegressions {
 
 	public static HashMap<String, HashMap<Integer,Double>> getCoeffs(boolean printCoeffs) {
 			initializeVars();
-		Reputation.print("Calculating coefficients for:"
-				+ Utils.createFileName());
+		//Reputation.print("Calculating coefficients for:"
+			//	+ Utils.createFileName());
 		HashMap<String, HashMap<Integer,Double>> coeffs = new HashMap<String, HashMap<Integer,Double>>();
 
 		
@@ -154,8 +167,11 @@ public class RunRegressions {
 				
 				String key = baseCat + basedOn;
 				//System.out.println("key:" + key);
-				String fileName = createRegressionFileName(baseCat, curCatIds);
-				HashMap<Integer, ArrayList<Double>> vars = readVarsForRegression(fileName);
+				//String fileName = createRegressionFileName(baseCat, curCatIds);
+				
+				//HashMap<Integer, ArrayList<Double>> vars = readVarsForRegression(fileName);
+
+				HashMap<Integer, ArrayList<Double>> vars = readVarsForRegression(regressionData.get(key));
 
 				int rowSize = vars.get(0).size();
 				//System.out.println("rowsize:" + rowSize);
@@ -195,10 +211,36 @@ public class RunRegressions {
 				}
 			}
 		}
+		printCeffsToFile(coeffs);
 		if (printCoeffs)
 			printCoeffs(coeffs, null);
 
 		return coeffs;
+
+	}
+
+	
+	private static HashMap<Integer, ArrayList<Double>> readVarsForRegression(
+			ArrayList<String> data) {
+
+			
+			int size = data.get(0).split(",").length;
+			HashMap<Integer, ArrayList<Double>> vars = new HashMap<Integer, ArrayList<Double>>();
+			for (int i = 0; i < size; i++) {
+				ArrayList<Double> al = new ArrayList<Double>();
+				vars.put(i, al);
+			}
+			for(String line:data)
+			 {
+				// System.out.println(line);
+				String[] tmpAr = line.split(",");
+				for (int i = 0; i < size; i++) {
+					vars.get(i).add(Double.parseDouble(tmpAr[i].trim()));
+				}
+
+			}
+			return vars;
+
 
 	}
 
@@ -231,6 +273,44 @@ public class RunRegressions {
 		return null;
 
 	}
+	
+	private static void printCeffsToFile(
+			HashMap<String, HashMap<Integer, Double>> coeffs) {
+		
+		PrintToFile coeffsFile = new PrintToFile();
+		String fileName = PropertiesFactory.getInstance().getProps().getProperty("regressionOutPath")+getCoeffsFile();
+		coeffsFile.openFile(fileName);
+		System.out.println("Printing coefficients at:"+fileName);
+		/**
+		 * key,cats
+		 */
+		
+		for (int curCat : curCatIds) {
+			if (curCat != 0) {
+				String str = curCat +basedOn+",";
+				HashMap<Integer,Double> tmp = coeffs.get(curCat +basedOn);
+				for(int catId:Utils.getCurCatIds()){
+					str+=tmp.get(catId) + ",";
+				}
+				System.out.println();
+				coeffsFile.writeToFile(str);
+			/*	str += tmp[tmp.length - 1];
+				if (pf != null)
+					pf.writeToFile(str);
+					*/
+
+			}
+		}
+coeffsFile.closeFile();
+		
+	}
+
+
+	private static String getCoeffsFile() {
+		return "coeffs_"+GlobalVariables.curModel+"_"+GlobalVariables.curApproach+"_"+ GlobalVariables.curCluster+"_"+
+	(GlobalVariables.curModel.equals("Binomial")?GlobalVariables.currentBinomialThreshold+"":"")+
+	(Reputation.crossValidation?GlobalVariables.currentFold:"")+".csv";
+	}
 
 	public static void printCoeffs(HashMap<String, HashMap<Integer, Double>> coeffs,
 			PrintToFile pf) {
@@ -250,6 +330,38 @@ public class RunRegressions {
 
 			}
 		}
+	}
+
+	public static HashMap<String, HashMap<Integer, Double>> readCoeffs() {
+		//	+ Utils.createFileName());
+	HashMap<String, HashMap<Integer,Double>> coeffs = new HashMap<String, HashMap<Integer,Double>>();
+
+	String fileName = PropertiesFactory.getInstance().getProps().getProperty("regressionOutPath")+getCoeffsFile();
+	System.out.println("Reading coefficients from file:"+fileName);
+	try{
+			BufferedReader input = new BufferedReader(new FileReader(fileName));
+			String line;
+			/**
+			 * key, coefficients....
+			 */
+			while ((line = input.readLine()) != null) {
+				String tmpAr[] = line.split(",");
+				String key = tmpAr[0];
+				HashMap<Integer,Double> curCoeffs = new HashMap<Integer, Double>();
+				int i=1;
+				for(int catId:Utils.getCurCatIds()){
+					curCoeffs.put(catId,Double.parseDouble(tmpAr[i]));
+					
+					i++;
+				}
+				coeffs.put(key,curCoeffs);
+			}
+			input.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	
+	return coeffs;
 	}
 
 }

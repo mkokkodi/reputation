@@ -73,15 +73,14 @@ public class Reputation {
 					showAveragesCV = true;
 				if (args[i].contains("-n"))
 					GlobalVariables.evaluateOnTrain = true;
-				if(args[i].contains("-p"))
+				if (args[i].contains("-p"))
 					GlobalVariables.outputPredictions = true;
-				if(args[i].contains("-yc")){
+				if (args[i].contains("-yc")) {
 					GlobalVariables.syntheticCluster = true;
 				}
-			
-				else if(args[i].contains("-y"))
+
+				else if (args[i].contains("-y"))
 					GlobalVariables.synthetic = true;
-			
 
 			}
 
@@ -99,6 +98,7 @@ public class Reputation {
 						if (GlobalVariables.evaluateOnTrain)
 							System.out.println("Running evaluation on Train.");
 						initEvalFiles();
+						// initPredictionsFile();
 						runEval();
 						closeEvalFiles();
 					}
@@ -138,6 +138,12 @@ public class Reputation {
 			if (train)
 				train();
 			if (evaluate) {
+				System.out
+						.println("Evaluation starts..."
+								+ ((GlobalVariables.currentFold != null) ? "Current Fold:"
+										+ GlobalVariables.currentFold
+										: ""));
+
 				runEval();
 
 			}
@@ -150,38 +156,49 @@ public class Reputation {
 
 	}
 
+	private static void initPredictionsFile() {
+
+		if (GlobalVariables.printFiles && GlobalVariables.outputPredictions) {
+			String resultPath = PropertiesFactory.getInstance().getProps()
+					.getProperty("results");
+
+			GlobalVariables.predictions = new PrintToFile();
+			String predictionFile = resultPath
+					+ "predictions"
+					+ ((GlobalVariables.currentFold != null) ? "_cv"
+							+ GlobalVariables.currentFold : "")
+					+ ((GlobalVariables.curModel.equals("Binomial")) ? ("_" + GlobalVariables.currentBinomialThreshold)
+							: "") + ".csv";
+			System.out.println("Prediction file:" + predictionFile);
+			GlobalVariables.predictions.openFile(predictionFile);
+
+			GlobalVariables.predictions
+					.writeToFile("model,approach,ScoreThreshold,"
+							+ "HistoryThreshold,actual,prediction,baseline,average,r,rl,rr,EMPrediction");
+		}
+
+	}
+
 	private static void initEvalFiles() {
-		System.out.println("Evaluation starts..."
-				+ ((GlobalVariables.currentFold != null) ? "Current Fold:"
-						+ GlobalVariables.currentFold : ""));
 		if (GlobalVariables.printFiles) {
 			String resultPath = PropertiesFactory.getInstance().getProps()
 					.getProperty("results");
 			GlobalVariables.allResultsFile = new PrintToFile();
-			GlobalVariables.allResultsFile.openFile(resultPath + "results"
-					+ (crossValidation ? "_cv" : "") + 
- ((GlobalVariables.synthetic) ? ("_syn" + (globalVars
+			GlobalVariables.allResultsFile.openFile(resultPath
+					+ "results"
+					+ (crossValidation ? "_cv" : "")+(GlobalVariables.syntheticCluster?"_syn_cluster":"")
+					+ ((GlobalVariables.synthetic) ? ("_syn" + (globalVars
 							.getClusterCategories().get("r").length - 1)) : "")
 					+ ".csv");
 
 			GlobalVariables.allResultsFile
-					.writeToFile(((GlobalVariables.synthetic)?"categories,":"")+"model,exactModel,approach,ScoreThreshold,HistoryThreshold,MAEModel"
+					.writeToFile(((GlobalVariables.synthetic) ? "categories,"
+							: "")
+							+ "model,exactModel,approach,ScoreThreshold,HistoryThreshold,MAEModel"
 							+ ",MAEBaseline");
 
 			globalVars.openFile(resultPath + "coeffs"
 					+ (crossValidation ? "_cv" : "") + ".csv");
-
-			if (GlobalVariables.outputPredictions) {
-				GlobalVariables.predictions = new PrintToFile();
-				GlobalVariables.predictions.openFile(resultPath
-						+ "predictions"
-						+ ((GlobalVariables.currentFold != null) ? "_cv"
-								+ GlobalVariables.currentFold : "") + ".csv");
-
-				GlobalVariables.predictions
-						.writeToFile("model,approach,ScoreThreshold,"
-								+ "HistoryThreshold,actual,prediction,baseline,average,r,rl,rr,EMPrediction");
-			}
 
 		}
 
@@ -202,21 +219,29 @@ public class Reputation {
 
 		for (String model : globalVars.getModels()) {
 
-			for (String approach : globalVars.getApproaches()) {
+			GlobalVariables.curModel = model;
 
-				GlobalVariables.curModel = model;
-				GlobalVariables.curApproach = approach;
-				if (model.equals("Binomial")) {
-					for (float currentBinomialThreshold : globalVars
-							.getScoreThresholds()) {
-						GlobalVariables.currentBinomialThreshold = currentBinomialThreshold;
+			if (model.equals("Binomial")) {
+				for (float currentBinomialThreshold : globalVars
+						.getScoreThresholds()) {
+					GlobalVariables.currentBinomialThreshold = currentBinomialThreshold;
+					initPredictionsFile();
+					for (String approach : globalVars.getApproaches()) {
+						GlobalVariables.curApproach = approach;
+
 						runEvalCluster();
 					}
-				} else {
-					runEvalCluster();
-
 				}
+			} else {
+				initPredictionsFile();
+				for (String approach : globalVars.getApproaches()) {
+					GlobalVariables.curApproach = approach;
+					
+					runEvalCluster();
+				}
+
 			}
+
 		}
 
 	}
@@ -225,7 +250,7 @@ public class Reputation {
 		for (String cluster : globalVars.getHierarchyStracture()) {
 			GlobalVariables.curCluster = cluster;
 			GlobalVariables.getCurCoeffs().put(cluster,
-					RunRegressions.getCoeffs(false));
+					RunRegressions.readCoeffs());
 		}
 
 		Reputation.print("Running evaluation for model:"

@@ -129,8 +129,10 @@ public class GlobalVariables {
 		for (String cluster : hierarchyStructure) {
 			String[] t = props.getProperty(cluster).split(",");
 			clusterToCategories.put(cluster, t);
-			for (String catName : t)
+			for (String catName : t){
+				System.out.println("Category "+catName+" to cluster:"+cluster);
 				categoriesToClusters.put(catName, cluster);
+			}
 
 		}
 		catNameToInt = new HashMap<String, Integer>();

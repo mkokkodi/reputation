@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import kokkodis.utils.odesk.PropertiesFactory;
+import kokkodis.factory.PropertiesFactory;
 
 public class AverageResults {
 

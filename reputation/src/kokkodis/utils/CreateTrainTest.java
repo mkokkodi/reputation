@@ -10,6 +10,7 @@ import kokkodis.factory.ModelCategory;
 import kokkodis.factory.MultCategory;
 import kokkodis.factory.PropertiesFactory;
 import kokkodis.factory.RawInstance;
+import kokkodis.odesk.Reputation;
 
 public class CreateTrainTest {
 
@@ -18,7 +19,7 @@ public class CreateTrainTest {
 
 	public static void generateTrainTestSets() {
 		globalVariables = GlobalVariables.getInstance();
-		String trainFile = "train.csv";
+		String trainFile = "train"+(Reputation.crossValidation?GlobalVariables.currentFold:"")+".csv";
 		if (GlobalVariables.synthetic) {
 
 			System.out.println("Running on synthetic data...");
@@ -287,6 +288,8 @@ public class CreateTrainTest {
 		System.out.println("Reading from directory:" + inputDirectory);
 		String outDir = PropertiesFactory.getInstance().getProps()
 				.getProperty("rawPath");
+		if(globalVariables==null)
+			globalVariables = GlobalVariables.getInstance();
 		globalVariables.openFile(outDir + "train" + i + ".csv");
 
 		PrintToFile testOut = new PrintToFile();

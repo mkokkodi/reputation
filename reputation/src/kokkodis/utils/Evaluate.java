@@ -64,22 +64,28 @@ public class Evaluate {
 			double maeEMModel = errorHolder.getEMModelMAESum()
 					/ errorHolder.getTotalEvaluations();
 
-			String resStr = GlobalVariables.curApproach + " | "
-					+ GlobalVariables.currentBinomialThreshold + " | "
-					+ historyThreshold + " | ";
+			String resStr = (GlobalVariables.curModel.equals("Binomial") ? GlobalVariables.currentBinomialThreshold
+					: " ")
+					+ " | " + historyThreshold + " | ";
 
 			// mseBinomialModel + " | "
 			// + mseBaseline;
 			if (GlobalVariables.printFiles) {
 
 				GlobalVariables.allResultsFile
-						.writeToFile(((GlobalVariables.synthetic) ? (GlobalVariables
-								.getInstance().getClusterCategories().get("r").length - 1 + ",")
+						.writeToFile(((GlobalVariables.synthetic) ? ("Baseline,")
 								: "")
 								+ GlobalVariables.curModel
-								+ ",Hierarchical,"
+								+ ","
+								+ "Baseline,"
+								+ ((GlobalVariables.syntheticCluster || (GlobalVariables.curModel
+										.equals("Multinomial") && !GlobalVariables.synthetic)) ? "Baseline,"
+										: (GlobalVariables.curApproach + ","))
 								+ resStr.replaceAll(" \\| ", ",")
-								+ maeHierarchicalModel + "," + maeBaseline);
+								+ maeBaseline
+								+ "," + maeBaseline);
+				resStr = GlobalVariables.curApproach + " | " + resStr;
+
 				GlobalVariables.allResultsFile
 						.writeToFile(((GlobalVariables.synthetic) ? (GlobalVariables
 								.getInstance().getClusterCategories().get("r").length - 1 + ",")
@@ -89,19 +95,20 @@ public class Evaluate {
 								+ resStr.replaceAll(" \\| ", ",")
 								+ maeEMModel
 								+ "," + maeBaseline);
+
 				GlobalVariables.allResultsFile
-						.writeToFile(((GlobalVariables.synthetic) ? ("Baseline,")
+						.writeToFile(((GlobalVariables.synthetic) ? (GlobalVariables
+								.getInstance().getClusterCategories().get("r").length - 1 + ",")
 								: "")
 								+ GlobalVariables.curModel
-								+ ",Baseline,"
+								+ ",Hierarchical,"
 								+ resStr.replaceAll(" \\| ", ",")
-								+ maeBaseline
-								+ "," + maeBaseline);
+								+ maeHierarchicalModel + "," + maeBaseline);
 
 			}
 			resStr += maeHierarchicalModel + " | " + maeBaseline + "|"
 					+ maeEMModel;
-			;
+
 			System.out.println(GlobalVariables.curModel + " | " + resStr);
 
 		}
@@ -128,18 +135,23 @@ public class Evaluate {
 				line = input.readLine();
 
 				/**
-				 * model,approach, cluster, averageLambda, rLambda,
-				 * clusterLambda
+				 * model,approach, ScoreThreshold, cluster, averageLambda,
+				 * rLambda, clusterLambda
 				 */
 				while ((line = input.readLine()) != null) {
 					String[] tmpAr = line.split(",");
-					String key = createKey(tmpAr[0], tmpAr[1], tmpAr[2]);
+					String key = "";
+					if (tmpAr[0].equals("Binomial"))
+						key = createKey(tmpAr[0], tmpAr[1], tmpAr[2], tmpAr[3]);
+					else
+						key = createKey(tmpAr[0], tmpAr[1], "", tmpAr[3]);
 					HashMap<String, Double> curLambdas = new HashMap<String, Double>();
 					curLambdas.put("average",
-							Double.parseDouble(tmpAr[3].trim()));
-					curLambdas.put("r", Double.parseDouble(tmpAr[4].trim()));
-					curLambdas.put(tmpAr[2],
-							Double.parseDouble(tmpAr[5].trim()));
+							Double.parseDouble(tmpAr[4].trim()));
+					curLambdas.put("r", Double.parseDouble(tmpAr[5].trim()));
+					if (GlobalVariables.hierarchicalFlag)
+						curLambdas.put(tmpAr[3],
+								Double.parseDouble(tmpAr[6].trim()));
 					lambdas.put(key, curLambdas);
 
 				}
@@ -152,9 +164,9 @@ public class Evaluate {
 	}
 
 	private static String createKey(String model, String approach,
-			String cluster) {
+			String scoreThreshold, String cluster) {
 
-		return model + "_" + approach + "_" + cluster;
+		return model + "_" + approach + "_" + scoreThreshold + "_" + cluster;
 	}
 
 	private static void printCoefficients() {
@@ -238,6 +250,7 @@ public class Evaluate {
 			BufferedReader input = new BufferedReader(new FileReader(
 					inputDirectory));
 			String line;
+			// System.out.println("Reading test data from file:"+inputDirectory);
 			while ((line = input.readLine()).contains("#")) {
 			}
 			;
@@ -427,29 +440,34 @@ public class Evaluate {
 
 		modelQuality = predictModelQuality(evalWorker, ri, workerType,
 				currentTaskCluster);
-		rIndependent = predictIndependent(evalWorker, ri, "r");
-		/*
-		 * if (GlobalVariables.hierarchicalFlag) { if
-		 * (currentTaskCluster.equals("rr")) { rrIndependent =
-		 * predictIndependent(evalWorker, ri, currentTaskCluster); } else {
-		 * rlIndependent = predictIndependent(evalWorker, ri,
-		 * currentTaskCluster); }
-		 */
+		// rIndependent = predictIndependent(evalWorker, ri, "r");
 
-		if (currentTaskCluster.equals("rr")) {
-			rrIndependent = modelQuality;
-		} else {
-			rlIndependent = modelQuality;
+		if (GlobalVariables.hierarchicalFlag) {
+			if (currentTaskCluster.equals("rr")) {
+				rrIndependent = predictIndependent(evalWorker, ri,
+						currentTaskCluster);
+			} else {
+				rlIndependent = predictIndependent(evalWorker, ri,
+						currentTaskCluster);
+			}
 		}
-	
-		if (!GlobalVariables.evaluateOnTrain) {
-			emquality = estimateEMQuality(average, rIndependent,
-					(rlIndependent != -1) ? rlIndependent : rrIndependent,
-					currentTaskCluster);
 
-			emAbsoluteError = Math.abs(emquality - ri.getScore());
-			errorHolder.setEMModelMAESum(errorHolder.getEMModelMAESum()
-					+ emAbsoluteError);
+		/*
+		 * if (currentTaskCluster.equals("rr")) { rrIndependent = modelQuality;
+		 * } else { rlIndependent = modelQuality; }
+		 */
+		if (!GlobalVariables.evaluateOnTrain) {
+			try {
+				emquality = estimateEMQuality(average, rIndependent,
+						(rlIndependent != -1) ? rlIndependent : rrIndependent,
+						currentTaskCluster);
+
+				emAbsoluteError = Math.abs(emquality - ri.getScore());
+				errorHolder.setEMModelMAESum(errorHolder.getEMModelMAESum()
+						+ emAbsoluteError);
+			} catch (NullPointerException ne) {
+
+			}
 
 		}
 		modelAbsoluteError = (Math.abs(modelQuality - ri.getScore()));
@@ -479,18 +497,18 @@ public class Evaluate {
 		errorHolder.setBaselineMSESum(errorHolder.getBaselineMSESum()
 				+ Math.pow(baselineAbsoluteError, 2));
 		if (GlobalVariables.printFiles && GlobalVariables.outputPredictions) {
-				GlobalVariables.predictions
-						.writeToFile(GlobalVariables.curModel
-								+ ","
-								+ GlobalVariables.curApproach
-								+ ","
-								+ (GlobalVariables.curModel.equals("Binomial") ? GlobalVariables.currentBinomialThreshold
-										: "-") + "," + historyThreshold + ","
-								+ ri.getScore() + "," + modelQuality + ","
-								+ baselineEstimatedQuality + "," + average
-								+ "," + rIndependent + "," + rlIndependent
-								+ "," + rrIndependent + "," + emquality);
-			}
+			GlobalVariables.predictions
+					.writeToFile(GlobalVariables.curModel
+							+ ","
+							+ GlobalVariables.curApproach
+							+ ","
+							+ (GlobalVariables.curModel.equals("Binomial") ? GlobalVariables.currentBinomialThreshold
+									: "-") + "," + historyThreshold + ","
+							+ ri.getScore() + "," + modelQuality + ","
+							+ baselineEstimatedQuality + "," + average + ","
+							+ rIndependent + "," + rlIndependent + ","
+							+ rrIndependent + "," + emquality);
+		}
 
 	}
 
@@ -502,10 +520,15 @@ public class Evaluate {
 			clusterPrediction = 0;
 		HashMap<String, Double> hm = lambdas.get(createKey(
 				GlobalVariables.curModel, GlobalVariables.curApproach,
+				(GlobalVariables.curModel.equals("Binomial") ? ""
+						+ GlobalVariables.currentBinomialThreshold : ""),
 				currentTaskCluster));
+		if (GlobalVariables.hierarchicalFlag)
+			return (hm.get("average") * average) + (hm.get("r") * rIndependent)
+					+ (hm.get(currentTaskCluster) * clusterPrediction);
+		else
+			return (hm.get("average") * average) + (hm.get("r") * rIndependent);
 
-		return (hm.get("average") * average) + (hm.get("r") * rIndependent)
-				+ (hm.get(currentTaskCluster) * clusterPrediction);
 	}
 
 	private static double estimateMultinomialPlaneAverage(EvalWorker evalWorker) {
